@@ -1,0 +1,7 @@
+[
+	{"name": "Singapore (LibreSpeed)", "server": "https://librespeed.sg/", "dlURL": "backend/garbage.php", "ulURL": "backend/empty.php", "pingURL": "backend/empty.php", "getIpURL": "backend/getIP.php"},
+	{"name": "Finland (LeluX)", "server": "https://speedtest.lelux.fi/", "dlURL": "backend/garbage.php", "ulURL": "backend/empty.php", "pingURL": "backend/empty.php", "getIpURL": "backend/getIP.php"},
+	{"name": "Netherlands (Serverius)", "server": "https://speedtest.serverius.net/", "dlURL": "backend/garbage.php", "ulURL": "backend/empty.php", "pingURL": "backend/empty.php", "getIpURL": "backend/getIP.php"},
+	{"name": "Germany (Advanced.name)", "server": "https://speedtest.advanced.name/", "dlURL": "backend/garbage.php", "ulURL": "backend/empty.php", "pingURL": "backend/empty.php", "getIpURL": "backend/getIP.php"},
+	{"name": "Slovakia (0x.sk)", "server": "https://speedtest.0x.sk/", "dlURL": "backend/garbage.php", "ulURL": "backend/empty.php", "pingURL": "backend/empty.php", "getIpURL": "backend/getIP.php"}
+  ]

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Monitoring Internet DPR RI - Like Ookla Server Picker (Fixed Nearest)</title>
+
+    <script src="speedtest.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      /* (style sama seperti sebelumnya, tidak diubah) */
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        background: #f5f5f5;
+      }
+      header {
+        background: #c62828;
+        color: #fff;
+        padding: 20px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 30px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+      }
+      .status {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 15px;
+        animation: pulse 1.2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 0.5;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.5;
+        }
+      }
+      .stats {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .card {
+        padding: 20px;
+        background: #fafafa;
+        border-radius: 10px;
+        width: 22%;
+        min-width: 120px;
+        text-align: center;
+        transition: 0.3s;
+      }
+      .card h2 {
+        margin: 0;
+        color: #c62828;
+      }
+      .card.active {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(198, 40, 40, 0.4);
+      }
+      button {
+        padding: 10px 20px;
+        margin: 10px;
+        background: #c62828;
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.2s;
+      }
+      button:hover {
+        background: #a01e1e;
+        transform: scale(1.02);
+      }
+      .server-panel {
+        background: #f0f0f0;
+        border-radius: 12px;
+        padding: 15px;
+        margin: 20px 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .server-panel select {
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid #ccc;
+        background: #fff;
+        font-family: inherit;
+        font-weight: bold;
+        flex: 2;
+        min-width: 220px;
+      }
+      .server-panel label {
+        font-weight: bold;
+        color: #c62828;
+      }
+      .info-isp {
+        font-size: 13px;
+        background: #e9ecef;
+        padding: 8px 12px;
+        border-radius: 20px;
+        text-align: center;
+      }
+      canvas {
+        background: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+      }
+      .history-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 12px;
+        margin-top: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        border-left: 5px solid #c62828;
+      }
+      .history-time {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 6px;
+      }
+      .history-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+      }
+      .history-row.small {
+        font-size: 12px;
+        color: #666;
+      }
+      @media (max-width: 600px) {
+        .stats {
+          flex-direction: column;
+          align-items: center;
+        }
+        .card {
+          width: 80%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>⚡ Monitoring Internet DPR RI - Multi Server (Ookla Style) ⚡</header>
+
+    <div class="container">
+      <div class="status" id="status">🟢 Siap</div>
+
+      <div class="server-panel">
+        <label>🌍 Pilih Server :</label>
+        <select id="serverSelect"></select>
+        <button id="applyServerBtn">✅ Apply Server</button>
+        <button id="findNearestBtn">🔍 Cari Server Terdekat (Ookla-like)</button>
+      </div>
+
+      <div class="info-isp" id="infoJaringan">📡 Mendeteksi ISP & Lokasi...</div>
+
+      <div class="stats">
+        <div class="card">
+          <p>⬇ Download</p>
+          <h2 id="download">0</h2>
+          <small>Mbps</small>
+        </div>
+        <div class="card">
+          <p>⬆ Upload</p>
+          <h2 id="upload">0</h2>
+          <small>Mbps</small>
+        </div>
+        <div class="card">
+          <p>📶 Ping</p>
+          <h2 id="ping">0</h2>
+          <small>ms</small>
+        </div>
+        <div class="card">
+          <p>⚡ Jitter</p>
+          <h2 id="jitter">0</h2>
+          <small>ms</small>
+        </div>
+      </div>
+
+      <div style="text-align: center">
+        <button onclick="startTest()">🚀 Mulai Speed Test</button>
+        <button onclick="clearHistory()">🗑 Clear History</button>
+      </div>
+
+      <canvas id="chart"></canvas>
+      <h3>📋 Riwayat Tes</h3>
+      <div id="historyList"></div>
+    </div>
+
+    <script>
+      // ======================== DAFTAR SERVER (diperbanyak server Indonesia) ========================
+      const SERVER_LIST = [
+        { name: "🏢 Auto (Default Speedtest.net)", location: "Otomatis", url: "default" },
+        {
+          name: "🚀 Hivelocity - Miami, USA",
+          location: "Amerika Utara",
+          url: "https://speedtest.hivelocity.net/speedtest/"
+        },
+        {
+          name: "🌐 Serverius - Dronten, Netherlands",
+          location: "Eropa",
+          url: "https://speedtest.serverius.net/speedtest/"
+        },
+        {
+          name: "🇸🇬 Singtel - Singapore",
+          location: "Asia Tenggara",
+          url: "https://speedtest.singapore.net/speedtest/"
+        },
+        {
+          name: "🇯🇵 Linode - Tokyo, Japan",
+          location: "Asia Timur",
+          url: "https://speedtest.tokyo2.linode.com/speedtest/"
+        },
+        {
+          name: "🇩🇪 Linode - Frankfurt, Germany",
+          location: "Eropa",
+          url: "https://speedtest.fra1.linode.com/speedtest/"
+        },
+        { name: "🇦🇺 Optus - Sydney, Australia", location: "Oseania", url: "https://speedtest.optus.net/speedtest/" },
+        { name: "🇬🇧 Vodafone - London, UK", location: "Eropa", url: "https://speedtest.vodafone.co.uk/speedtest/" },
+        {
+          name: "🇨🇦 Rogers - Toronto, Canada",
+          location: "Amerika Utara",
+          url: "https://speedtest.rogers.com/speedtest/"
+        },
+        {
+          name: "🇮🇳 Airtel - New Delhi, India",
+          location: "Asia Selatan",
+          url: "https://speedtest.airtel.in/speedtest/"
+        },
+        {
+          name: "🇧🇷 Vivo - São Paulo, Brazil",
+          location: "Amerika Selatan",
+          url: "https://speedtest.vivo.com.br/speedtest/"
+        },
+        {
+          name: "🇿🇦 Vodacom - Johannesburg, SA",
+          location: "Afrika",
+          url: "https://speedtest.vodacom.co.za/speedtest/"
+        },
+        { name: "🇰🇷 KT - Seoul, South Korea", location: "Asia Timur", url: "https://speedtest.kt.com/speedtest/" },
+        { name: "🇫🇷 Orange - Paris, France", location: "Eropa", url: "https://speedtest.orange.fr/speedtest/" },
+        {
+          name: "🇮🇩 Biznet - Jakarta, Indonesia",
+          location: "Asia Tenggara",
+          url: "https://speedtest.biznet.net.id/speedtest/"
+        },
+        {
+          name: "🇮🇩 Icon+ (PLN) - Jakarta, Indonesia",
+          location: "Asia Tenggara",
+          url: "https://speedtest.iconpln.net.id/speedtest/"
+        },
+        {
+          name: "🇮🇩 FirstMedia - Jakarta, Indonesia",
+          location: "Asia Tenggara",
+          url: "https://speedtest.firstmedia.com/speedtest/"
+        },
+        {
+          name: "🇵🇭 PLDT - Manila, Philippines",
+          location: "Asia Tenggara",
+          url: "https://speedtest.pldt.com/speedtest/"
+        }
+      ];
+
+      // ======================== GLOBAL ========================
+      let s = null;
+      let chart = null;
+      let historyData = JSON.parse(localStorage.getItem("history")) || [];
+      let currentServerUrl = "default";
+
+      function populateDropdown() {
+        const select = document.getElementById("serverSelect");
+        select.innerHTML = "";
+        SERVER_LIST.forEach(server => {
+          const option = document.createElement("option");
+          option.value = server.url;
+          option.textContent = `${server.name} - ${server.location}`;
+          if (server.url === currentServerUrl) option.selected = true;
+          select.appendChild(option);
+        });
+      }
+
+      function initSpeedtest() {
+        if (typeof Speedtest === "undefined") {
+          alert("❌ speedtest.js tidak terbaca! Pastikan file speedtest.js ada.");
+          return false;
+        }
+        s = new Speedtest();
+        s.setParameter("test_order", "D_U_P");
+        s.setParameter("time_dl_max", 10);
+        s.setParameter("time_ul_max", 10);
+        s.setParameter("count_ping", 10);
+        if (currentServerUrl !== "default") s.setParameter("server", currentServerUrl);
+        return true;
+      }
+
+      function applyServer() {
+        const select = document.getElementById("serverSelect");
+        const selectedVal = select.value;
+        const selectedText = select.options[select.selectedIndex].text;
+        currentServerUrl = selectedVal;
+        localStorage.setItem("preferredServer", currentServerUrl);
+        document.getElementById("status").innerHTML =
+          selectedVal === "default" ? "🔄 Menggunakan server bawaan" : `🌐 Server diubah ke: ${selectedText}`;
+
+        if (s) {
+          let oldOrder = s._params?.test_order || "D_U_P";
+          let oldDlMax = s._params?.time_dl_max || 10;
+          let oldUlMax = s._params?.time_ul_max || 10;
+          let oldPingCount = s._params?.count_ping || 10;
+          s = null;
+          initSpeedtest();
+          if (s) {
+            s.setParameter("test_order", oldOrder);
+            s.setParameter("time_dl_max", oldDlMax);
+            s.setParameter("time_ul_max", oldUlMax);
+            s.setParameter("count_ping", oldPingCount);
+            if (currentServerUrl !== "default") s.setParameter("server", currentServerUrl);
+          }
+        }
+        setTimeout(
+          () => (document.getElementById("status").innerHTML = "✅ Server siap. Klik 'Mulai Speed Test'"),
+          1500
+        );
+      }
+
+      // ======================== PERBAIKAN CARI SERVER TERDEKAT ========================
+      async function findNearestServer() {
+        const statusDiv = document.getElementById("status");
+        statusDiv.innerHTML = "🔍 Mencari server terdekat (ukur ping ke semua server)...";
+
+        // Ukur ping ke semua server (kecuali "default")
+        const promises = SERVER_LIST.filter(s => s.url !== "default").map(async server => {
+          const ping = await measureLatency(server.url);
+          return { server, pingMs: ping };
+        });
+
+        const results = await Promise.all(promises);
+        const validResults = results.filter(r => r.pingMs < Infinity);
+        if (validResults.length === 0) {
+          statusDiv.innerHTML = "⚠️ Gagal mendeteksi server terdekat, coba lagi nanti.";
+          return;
+        }
+        validResults.sort((a, b) => a.pingMs - b.pingMs);
+        const best = validResults[0];
+
+        // Pilih di dropdown
+        const select = document.getElementById("serverSelect");
+        for (let i = 0; i < select.options.length; i++) {
+          if (select.options[i].value === best.server.url) {
+            select.selectedIndex = i;
+            break;
+          }
+        }
+        statusDiv.innerHTML = `🏆 Server terdekat: ${best.server.name} (${best.pingMs.toFixed(0)} ms) - Terapkan otomatis.`;
+        applyServer();
+      }
+
+      // Mengukur latency dengan mencoba beberapa endpoint gambar
+      async function measureLatency(baseUrl) {
+        // Daftar endpoint yang biasanya ada di server speedtest
+        const testFiles = ["speedtest/random400x400.jpg", "speedtest/logo.png", "speedtest/empty.txt", ""];
+
+        for (const file of testFiles) {
+          const url = baseUrl + (baseUrl.endsWith("/") ? "" : "/") + file + "?nocache=" + Date.now();
+          const latency = await pingImage(url);
+          if (latency < Infinity) return latency;
+        }
+        return Infinity;
+      }
+
+      function pingImage(url) {
+        return new Promise(resolve => {
+          const start = performance.now();
+          const img = new Image();
+          const timeout = setTimeout(() => {
+            resolve(Infinity);
+          }, 8000); // timeout 8 detik
+
+          img.onload = () => {
+            clearTimeout(timeout);
+            const end = performance.now();
+            resolve(end - start);
+          };
+          img.onerror = () => {
+            clearTimeout(timeout);
+            // Gagal load gambar, coba endpoint lain nanti
+            resolve(Infinity);
+          };
+          img.src = url;
+        });
+      }
+
+      // ======================== DETEKSI ISP ========================
+      async function detectISP() {
+        try {
+          const response = await fetch("https://ipapi.co/json/");
+          const data = await response.json();
+          const ip = data.ip || "Tidak diketahui";
+          const isp = data.org || data.asn || "ISP tidak terdeteksi";
+          const city = data.city || "-";
+          const region = data.region || "-";
+          const country = data.country_name || "-";
+          document.getElementById("infoJaringan").innerHTML = `📍 ${ip} | ${isp} | ${city}, ${region}, ${country}`;
+        } catch (error) {
+          document.getElementById("infoJaringan").innerHTML = "⚠️ Gagal deteksi ISP";
+        }
+      }
+
+      // ======================== TEST UTAMA ========================
+      function startTest() {
+        if (!s && !initSpeedtest()) {
+          alert("Speedtest gagal diinisialisasi");
+          return;
+        }
+        document.getElementById("download").innerText = "0";
+        document.getElementById("upload").innerText = "0";
+        document.getElementById("ping").innerText = "0";
+        document.getElementById("jitter").innerText = "0";
+        document.getElementById("status").innerHTML = "🚀 Memulai test...";
+        if (chart) {
+          chart.destroy();
+          chart = null;
+        }
+
+        let labels = [],
+          dlData = [],
+          ulData = [];
+
+        s.onupdate = function (data) {
+          const state = data.testState;
+          const dl = Number(data.dlStatus || 0);
+          const ul = Number(data.ulStatus || 0);
+          if (state === 1) {
+            document.getElementById("status").innerHTML = "📡 Download Test...";
+            document.getElementById("download").innerText = dl.toFixed(2);
+            setActiveCard(0);
+          }
+          if (state === 3) {
+            document.getElementById("status").innerHTML = "📤 Upload Test...";
+            document.getElementById("upload").innerText = ul.toFixed(2);
+            setActiveCard(1);
+          }
+          if (state === 2) {
+            document.getElementById("status").innerHTML = "⏱️ Ping & Jitter...";
+            document.getElementById("ping").innerText = Number(data.pingStatus || 0).toFixed(2);
+            document.getElementById("jitter").innerText = Number(data.jitterStatus || 0).toFixed(2);
+            setActiveCard(2);
+          }
+          const t = new Date().toLocaleTimeString();
+          labels.push(t);
+          dlData.push(dl);
+          ulData.push(ul);
+          updateChart(labels, dlData, ulData);
+        };
+        s.onend = function () {
+          document.getElementById("status").innerHTML = "✅ Test selesai!";
+          setActiveCard(-1);
+          saveHistory();
+          renderHistory();
+          detectISP();
+        };
+        s.onerror = function (err) {
+          console.error(err);
+          document.getElementById("status").innerHTML = "❌ Error saat test. Coba ganti server.";
+          setActiveCard(-1);
+        };
+        s.start();
+      }
+
+      function setActiveCard(i) {
+        document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+        if (i >= 0) document.querySelectorAll(".card")[i].classList.add("active");
+      }
+      function updateChart(labels, dl, ul) {
+        const ctx = document.getElementById("chart").getContext("2d");
+        if (!chart) {
+          chart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Download (Mbps)",
+                  data: dl,
+                  borderColor: "#C62828",
+                  backgroundColor: "rgba(198,40,40,0.2)",
+                  borderWidth: 3,
+                  fill: true,
+                  tension: 0.4
+                },
+                {
+                  label: "Upload (Mbps)",
+                  data: ul,
+                  borderColor: "#2196F3",
+                  backgroundColor: "rgba(33,150,243,0.2)",
+                  borderWidth: 3,
+                  fill: true,
+                  tension: 0.4
+                }
+              ]
+            },
+            options: { animation: false, responsive: true, scales: { x: { display: false }, y: { beginAtZero: true } } }
+          });
+        } else {
+          chart.data.labels = labels;
+          chart.data.datasets[0].data = dl;
+          chart.data.datasets[1].data = ul;
+          chart.update();
+        }
+      }
+      function saveHistory() {
+        let dl = Number(document.getElementById("download").innerText) || 0;
+        let ul = Number(document.getElementById("upload").innerText) || 0;
+        let pingVal = Number(document.getElementById("ping").innerText) || 0;
+        let jitterVal = Number(document.getElementById("jitter").innerText) || 0;
+        let serverName =
+          document.getElementById("serverSelect").options[document.getElementById("serverSelect").selectedIndex]
+            ?.text || "Unknown";
+        historyData.push({
+          download: dl,
+          upload: ul,
+          ping: pingVal,
+          jitter: jitterVal,
+          time: new Date().toLocaleTimeString(),
+          server: serverName
+        });
+        if (historyData.length > 30) historyData.shift();
+        localStorage.setItem("history", JSON.stringify(historyData));
+      }
+      function renderHistory() {
+        const list = document.getElementById("historyList");
+        list.innerHTML = "";
+        if (historyData.length === 0) {
+          list.innerHTML = '<div class="history-card">Belum ada riwayat test</div>';
+          return;
+        }
+        historyData
+          .slice()
+          .reverse()
+          .forEach(item => {
+            list.innerHTML += `<div class="history-card"><div class="history-time">🕒 ${item.time} | 🌐 ${item.server}</div><div class="history-row"><span>⬇ Download</span><b>${item.download} Mbps</b></div><div class="history-row"><span>⬆ Upload</span><b>${item.upload} Mbps</b></div><div class="history-row small">📶 ${item.ping} ms | Jitter ${item.jitter} ms</div><div class="history-row small">${item.download > 100 ? "🚀 Sangat Cepat" : item.download > 50 ? "⚡ Cepat" : item.download > 10 ? "🐢 Sedang" : "❌ Buruk"}</div></div>`;
+          });
+      }
+      function clearHistory() {
+        if (confirm("Hapus semua riwayat test?")) {
+          localStorage.removeItem("history");
+          historyData = [];
+          renderHistory();
+        }
+      }
+
+      // ======================== LOAD ========================
+      window.onload = async function () {
+        const savedServer = localStorage.getItem("preferredServer");
+        if (savedServer) currentServerUrl = savedServer;
+        populateDropdown();
+        await detectISP();
+        initSpeedtest();
+        renderHistory();
+        const select = document.getElementById("serverSelect");
+        for (let i = 0; i < select.options.length; i++)
+          if (select.options[i].value === currentServerUrl) select.selectedIndex = i;
+        document.getElementById("applyServerBtn").addEventListener("click", applyServer);
+        document.getElementById("findNearestBtn").addEventListener("click", findNearestServer);
+        document.getElementById("status").innerHTML = "✅ Siap. Pilih server atau cari server terdekat.";
+      };
+    </script>
+  </body>
+</html>
